@@ -325,26 +325,27 @@ LC13:
 	.text
 	.globl	_printArray
 	.def	_printArray;	.scl	2;	.type	32;	.endef
+	#_printArray(int* a, int* b, int* c)
 _printArray:
 	push	ebp
 	mov	ebp, esp
 	sub	esp, 12
 	mov	eax, DWORD PTR [ebp+12]
-	mov	DWORD PTR [ebp-4], eax
+	mov	DWORD PTR [ebp-4], eax	# int* pp = b;
 	jmp	L24
 L27:
 	mov	eax, DWORD PTR [ebp-4]
 	mov	eax, DWORD PTR [eax]
-	mov	DWORD PTR [esp+4], eax
+	mov	DWORD PTR [esp+4], eax	# int v0 = *((arr + y) & FFFFFFFC)
 	mov	DWORD PTR [esp], OFFSET FLAT:LC13
 	call	_printf
 	mov	eax, DWORD PTR [ebp-4]
-	sub	eax, DWORD PTR [ebp+12]
-	sar	eax, 2
-	add	eax, 1
-	and	eax, 3
+	sub	eax, DWORD PTR [ebp+12]		# ?? eax = pp - b = 0  
+	sar	eax, 2						# eax = 0
+	add	eax, 1						# eax = 1
+	and	eax, 3						# eax = 1
 	test	eax, eax
-	jne	L25
+	jne	L25							# if eax != 0 goto L25 (always true ??)
 	mov	DWORD PTR [esp], 10
 	call	_putchar
 	jmp	L26
@@ -352,15 +353,15 @@ L25:
 	mov	eax, DWORD PTR [ebp-4]
 	add	eax, 4
 	cmp	DWORD PTR [ebp+16], eax
-	ja	L26
-	mov	DWORD PTR [esp], 10
+	ja	L26						# if c > b+4 goto L26
+	mov	DWORD PTR [esp], 10		# else _putchar(10)
 	call	_putchar
 L26:
-	add	DWORD PTR [ebp-4], 4
+	add	DWORD PTR [ebp-4], 4	# pp ++
 L24:
 	mov	eax, DWORD PTR [ebp-4]
-	cmp	eax, DWORD PTR [ebp+16]
-	jb	L27
+	cmp	eax, DWORD PTR [ebp+16]	
+	jb	L27		# if ( b < c) goto L27 else return
 	nop
 	nop
 	leave
@@ -396,99 +397,101 @@ LC17:
 	.text
 	.globl	_level2
 	.def	_level2;	.scl	2;	.type	32;	.endef
-# _level2 (int x)
+# _level2 (int seed)
 _level2:
 	push	ebp
 	mov	ebp, esp
 	sub	esp, 64
+	## char arr0[9] = {0x13, 0xE8, 0xAB, 0xD3, 0x38, 0xD5, 0xDB, 0x19, 0x1D}
 	mov	DWORD PTR [ebp-46], -743708653
 	mov	DWORD PTR [ebp-42], 433837368
 	mov	BYTE PTR [ebp-38], 29
-	mov	DWORD PTR [ebp-4], 0
+	mov	DWORD PTR [ebp-4], 0 # int i = 0
 	jmp	L33
 L34:
 	lea	eax, [ebp+8]
 	mov	DWORD PTR [esp], eax
-	call	_rand_32
-	cdq
-	shr	edx, 24
-	add	eax, edx
-	movzx	eax, al
-	sub	eax, edx
-	mov	ecx, eax
-	lea	edx, [ebp-37]
+	call	_rand_32	# eax = _rand_32(seed)
+	cdq					# extends the sign bit of EAX into the EDX
+	shr	edx, 24			# if eax<0: edx = 0x000000FF else edx = 0x00000000
+	add	eax, edx		# if eax<0: eax += 255 
+	movzx	eax, al		# eax &| 0x000000FF
+	sub	eax, edx		
+	mov	ecx, eax		# ecx = eax - edx
+	lea	edx, [ebp-37]	# char arr[9];	
 	mov	eax, DWORD PTR [ebp-4]
-	add	eax, edx
-	mov	BYTE PTR [eax], cl
-	add	DWORD PTR [ebp-4], 1
+	add	eax, edx		# 
+	mov	BYTE PTR [eax], cl	# arr[i] = (char)ecx 
+	add	DWORD PTR [ebp-4], 1	# i++
 L33:
 	cmp	DWORD PTR [ebp-4], 8	
-	jle	L34						# x <= 8 goto L34
-	lea	eax, [ebp-28]
+	jle	L34						# while (i < 9) do L34
+	lea	eax, [ebp-28]			
 	mov	DWORD PTR [esp+8], eax
 	lea	eax, [ebp-24]	#int y;
 	mov	DWORD PTR [esp+4], eax
 	mov	DWORD PTR [esp], OFFSET FLAT:LC15
-	call	_scanf # _scanf("%d %d", &y)
+	call	_scanf # _scanf("%d %d", &y, &x)
 	mov	eax, DWORD PTR [ebp-24]
 	test	eax, eax
-	js	L43 		# if y < 0 goto L43
+	js	L43 		# if y < 0 goto L43 (return)
 	mov	eax, DWORD PTR [ebp-24]
-	mov	edx, eax
-	lea	eax, [ebp-37]	# 
-	add	eax, edx
-	and	eax, -4
-	mov	DWORD PTR [ebp-16], eax
-	mov	eax, DWORD PTR [ebp-28]
+	mov	edx, eax			
+	lea	eax, [ebp-37]		# eax = arr
+	add	eax, edx			# eax = arr + y; 
+	and	eax, -4				# eax = (arr + y) & FFFFFFFC // round to lower mul of 4
+	mov	DWORD PTR [ebp-16], eax		# int *ptr = (arr + y) & FFFFFFFC
+	mov	eax, DWORD PTR [ebp-28]	
 	mov	edx, eax
 	lea	eax, [ebp-37]
 	add	eax, edx
 	and	eax, -4
-	mov	DWORD PTR [ebp-20], eax
+	mov	DWORD PTR [ebp-20], eax		# int *ptr2 = (arr + x) & FFFFFFFC
 	mov	eax, DWORD PTR [ebp-20]
 	mov	DWORD PTR [esp+8], eax
 	mov	eax, DWORD PTR [ebp-16]
 	mov	DWORD PTR [esp+4], eax
 	lea	eax, [ebp-37]
 	mov	DWORD PTR [esp], eax
-	call	_printArray
+	call	_printArray 			# _printArray(arr, ptr, ptr2);
 	mov	eax, DWORD PTR [ebp-16]
-	mov	DWORD PTR [ebp-8], eax
+	mov	DWORD PTR [ebp-8], eax		#int* ptr3 = ptr
+	
 	jmp	L37
 L38:
-	lea	eax, [ebp-52]
+	lea	eax, [ebp-52]			#int z;
 	mov	DWORD PTR [esp+4], eax
 	mov	DWORD PTR [esp], OFFSET FLAT:LC16
-	call	_scanf
+	call	_scanf				# scanf("%X", &z);
+	mov	eax, DWORD PTR [ebp-8]	
+	mov	eax, DWORD PTR [eax]	
+	mov	edx, eax				#edx = *ptr3
+	mov	eax, DWORD PTR [ebp-52]	#eax = z
+	xor	eax, edx				
+	mov	edx, eax				#edx = z ^ *ptr3
 	mov	eax, DWORD PTR [ebp-8]
-	mov	eax, DWORD PTR [eax]
-	mov	edx, eax
-	mov	eax, DWORD PTR [ebp-52]
-	xor	eax, edx
-	mov	edx, eax
-	mov	eax, DWORD PTR [ebp-8]
-	mov	DWORD PTR [eax], edx
-	add	DWORD PTR [ebp-8], 4
+	mov	DWORD PTR [eax], edx	#*ptr3 = z ^ *ptr3
+	add	DWORD PTR [ebp-8], 4		## ptr3 ++
 L37:
 	mov	eax, DWORD PTR [ebp-8]
 	cmp	eax, DWORD PTR [ebp-20]
-	jb	L38
-	mov	DWORD PTR [ebp-12], 0
+	jb	L38							# while(ptr3 < ptr2) do L38
+	mov	DWORD PTR [ebp-12], 0	# int i=0
 	jmp	L39
 L41:
-	lea	edx, [ebp-37]
+	lea	edx, [ebp-37]	
 	mov	eax, DWORD PTR [ebp-12]
-	add	eax, edx
-	movzx	edx, BYTE PTR [eax]
-	lea	ecx, [ebp-46]
+	add	eax, edx					
+	movzx	edx, BYTE PTR [eax]		#edx = (char)arr[i]
+	lea	ecx, [ebp-46]			
 	mov	eax, DWORD PTR [ebp-12]
-	add	eax, ecx
-	movzx	eax, BYTE PTR [eax]
+	add	eax, ecx					#eax = ebp-46 + i
+	movzx	eax, BYTE PTR [eax]		#eax = BYTE PTR [ebp-46 + i] :: 0x13, 0xE8, 0xAB, 0xD3, 0x38, 0xD5, 0xDB, 0x19, 0x1D  	
 	cmp	dl, al
 	jne	L44
-	add	DWORD PTR [ebp-12], 1
+	add	DWORD PTR [ebp-12], 1 # i++
 L39:
-	cmp	DWORD PTR [ebp-12], 8
+	cmp	DWORD PTR [ebp-12], 8 # while(i<9) do L41
 	jle	L41
 	mov	DWORD PTR [esp], OFFSET FLAT:LC17
 	call	_puts
@@ -518,7 +521,7 @@ _main:
 	mov	eax, DWORD PTR [eax]	# get value at (argv[0] + 4) 
 	mov	DWORD PTR [esp], eax
 	call	_atoi				
-	mov	DWORD PTR [ebp-8], eax	# int x = _atoi(argv[0] + 4)
+	mov	DWORD PTR [ebp-8], eax	# int seed = _atoi(argv[0] + 4)
 	mov	eax, DWORD PTR [ebp+12]
 	mov	DWORD PTR [esp+4], eax
 	mov	eax, DWORD PTR [ebp+8]
@@ -526,7 +529,7 @@ _main:
 	call	_level1	# if argc > 1 than print "Level 1 Passed!" else exit program
 	mov	eax, DWORD PTR [ebp-8]
 	mov	DWORD PTR [esp], eax
-	call	_level2				# _level2 (x) 
+	call	_level2				# _level2 (seed) 
 	mov	eax, DWORD PTR [ebp+12]
 	mov	eax, DWORD PTR [eax+8]
 	mov	DWORD PTR _arg, eax
